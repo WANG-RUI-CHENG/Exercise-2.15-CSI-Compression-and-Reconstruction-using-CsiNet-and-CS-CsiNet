@@ -28,10 +28,10 @@ img_total = img_height*img_width*img_channels  # Total flattened CSI feature dim
 residual_num = 2       # Number of residual blocks in the decoder (match pre-trained model)
 encoded_dim = 512      # Compression dimension (match pre-trained model): 1/4→512,1/16→128,1/32→64,1/64→32
 
-# ────────────────────────  Exercise 2.15 多資料集設定  ───────── #
+# ────────────────────────  多資料集設定  ──────────────────────── #
 # 設為 True 時，對應題目 (b)，使用同一個已訓練 CsiNet 模型測試超過五組 COST 2100 資料集。
 use_cost2100_multi_dataset = True
-# 請將 COST 2100 產生的 MAT 檔放到 data/，並維持變數名稱為 HT 與 HF_all。
+# 將 COST 2100 產生的 MAT 檔放到 data/，並維持變數名稱為 HT 與 HF_all。
 # HT 的形狀應為 [num_samples, 2048]；HF_all 可選，但若提供即可計算 correlation。
 cost2100_datasets = [
     {
@@ -82,7 +82,7 @@ if not os.path.exists(outfile):
     outfile = "saved_model/model_%s.weights.h5"%file
 autoencoder.load_weights(outfile)  # Load weights into the reconstructed model
 # ────────────────────────  Test Data Loading and Preprocessing  ─────────────── #
-# 以下輔助函式是為 Exercise 2.15 的多資料集評估所新增。
+# 以下函式是為多資料集評估所新增。
 def require_file(path):
     """讀取資料前先確認必要的 MAT 檔是否存在。"""
     if not os.path.exists(path):
