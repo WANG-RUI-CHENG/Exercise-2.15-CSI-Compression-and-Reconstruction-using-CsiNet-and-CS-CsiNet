@@ -300,6 +300,8 @@ h5py
 ### 7.4 從 Google Drive 複製資料
 
 先將 MATLAB 產生的 `CsiNetData` 壓縮為 `CsiNetData.zip`，上傳到 Google Drive。
+或是參考已生成檔案連結如下:
+https://drive.google.com/file/d/1ei6YBdNO40pzb99P834Amt2Z1r-qRdIS/view?usp=drive_link
 
 ```python
 from google.colab import drive
