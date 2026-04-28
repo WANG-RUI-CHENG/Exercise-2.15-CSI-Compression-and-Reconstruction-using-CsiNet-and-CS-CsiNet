@@ -27,7 +27,7 @@ img_total = img_height*img_width*img_channels  # Total CSI feature dimensions
 residual_num = 2       # Number of residual blocks in the decoder
 encoded_dim = 512      # Compress rate=1/4->dim.=512, 1/16->128, 1/32->64, 1/64->32
 
-# ────────────────────────  Exercise 2.15 多資料集設定  ───────── #
+# ────────────────────────  多資料集設定  ────────────────────────#
 # 設為 True 時，執行 Exercise 2.15，使用超過五組 COST 2100 通道資料集。
 use_cost2100_multi_dataset = True
 # 'mixed_cost2100'：對應題目 (c)，將所有 COST 2100 訓練/驗證資料集合併後訓練。
@@ -35,7 +35,7 @@ use_cost2100_multi_dataset = True
 train_dataset_mode = 'mixed_cost2100'
 # 設為 True 時，訓練完成後會逐一測試每一組 COST 2100 測試資料集。
 evaluate_all_cost2100_datasets = True
-# 請將 COST 2100 產生的 MAT 檔放到 data/，並維持變數名稱為 HT 與 HF_all。
+# 將 COST 2100 產生的 MAT 檔放到 data/，並維持變數名稱為 HT 與 HF_all。
 # HT 的形狀應為 [num_samples, 2048]；HF_all 可選，但若提供即可計算 correlation。
 cost2100_datasets = [
     {
