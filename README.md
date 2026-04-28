@@ -1,4 +1,4 @@
-# Exercise 2.15 — CsiNet 在多組 COST2100 通道資料集上的泛化能力測試
+# Exercise 2.15: CSI Compression and Reconstruction using CsiNet and CS-CsiNet
 
 *Wireless Communications and Machine Learning* Exercise 2.15 目標是使用 **COST2100 channel model** 產生多組不同通道資料集，評估 CsiNet 在不同通道分佈下的 CSI reconstruction NMSE，並使用混合資料集重新訓練 CsiNet，觀察模型在複雜通道環境中的泛化能力。
 
@@ -453,3 +453,17 @@ DATA_HtestFin_user_edge_all.mat
 ```
 
 若未提供 `HF_all`，程式仍可正常計算 NMSE，correlation 欄位會顯示為 `NaN`。
+
+---
+## 12. colab 模擬結果截圖
+
+```text
+Mixed-dataset training 結果
+```
+<img width="817" height="481" alt="image" src="https://github.com/user-attachments/assets/3fd0a107-cc84-403b-aede-fecc84be9d4a" />
+
+```text
+Single vs Mixed 比較
+```
+
+<img width="828" height="450" alt="image" src="https://github.com/user-attachments/assets/3eb4605a-9fa0-48d4-b03d-b5ad12f86268" />
