@@ -114,7 +114,7 @@ NMSE(dB) = 10 log10(NMSE)
 
 ---
 
-## 3. 專案檔案結構
+## 3. 檔案結構
 
 ```text
 .
@@ -125,28 +125,14 @@ NMSE(dB) = 10 log10(NMSE)
 ├── CS-CsiNet_onlytest.py
 ├── matlab/
 │   └── generate_cost2100_csinet_data.m
-├── result/
-│   ├── final_single_1500epochs.csv
-│   ├── final_mixed_1500epochs.csv
-│   └── final_compare_1500epochs.csv
+└── result/
+    ├── final_single_1500epochs.csv
+    ├── final_mixed_1500epochs.csv
+    └── final_compare_1500epochs.csv
 
 ```
 
-### 不建議上傳到 GitHub 的大型檔案
 
-```text
-data/*.mat
-CsiNetData.zip
-saved_model/*.h5
-saved_model/*.weights.h5
-saved_model/*.json
-result/model_*.weights.h5
-result/TensorBoard_*/
-```
-
-大型 `.mat` dataset 與 model weights 請自行產生或放在 Google Drive，不建議直接放進 GitHub。
-
----
 
 ## 4. 環境建立
 
@@ -155,12 +141,8 @@ result/TensorBoard_*/
 主要在 Google Colab 執行。
 
 ```bash
-pip install -r requirements.txt
-```
+pip install 以下內容：
 
-`requirements.txt` 內容：
-
-```text
 tensorflow
 numpy
 scipy
@@ -299,7 +281,14 @@ test samples per dataset = 600
 ### 7.2 安裝套件
 
 ```python
-!pip install -r requirements.txt
+!pip install 
+
+tensorflow
+numpy
+scipy
+matplotlib
+pandas
+h5py
 ```
 
 ### 7.3 建立資料夾
