@@ -119,8 +119,6 @@ NMSE(dB) = 10 log10(NMSE)
 ```text
 .
 ├── README.md
-├── requirements.txt
-├── .gitignore
 ├── CsiNet_train.py
 ├── CsiNet_onlytest.py
 ├── CS-CsiNet_train.py
@@ -131,10 +129,7 @@ NMSE(dB) = 10 log10(NMSE)
 │   ├── final_single_1500epochs.csv
 │   ├── final_mixed_1500epochs.csv
 │   └── final_compare_1500epochs.csv
-├── data/
-│   └── .gitkeep
-└── saved_model/
-    └── .gitkeep
+
 ```
 
 ### 不建議上傳到 GitHub 的大型檔案
