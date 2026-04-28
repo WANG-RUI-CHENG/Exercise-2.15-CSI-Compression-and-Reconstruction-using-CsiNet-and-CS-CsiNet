@@ -6,16 +6,16 @@ evaluates performance with NMSE (Normalized Mean Square Error) and correlation c
 and saves training logs, model weights, and reconstruction visualizations.
 """
 import tensorflow as tf
-from keras.layers import Input, Dense, BatchNormalization, Reshape, Conv2D, add, LeakyReLU
-from keras.models import Model
-from keras.callbacks import TensorBoard, Callback
+from tensorflow.keras.layers import Input, Dense, BatchNormalization, Reshape, Conv2D, add, LeakyReLU
+from tensorflow.keras.models import Model
+from tensorflow.keras.callbacks import TensorBoard, Callback
 import scipy.io as sio 
 import numpy as np
 import math
 import time
 import os
 import csv
-tf.reset_default_graph()
+# tf.reset_default_graph()  # TensorFlow 2 / Colab 不需要使用
 # ────────────────────────  Environment Configuration  ───────────────────────── #
 envir = 'indoor' #'indoor' or 'outdoor' -> Select wireless propagation environment
 # ────────────────────────  CSI Image Parameters  ────────────────────────────── #
@@ -153,21 +153,40 @@ def require_file(path):
         )
 
 def load_ht_data(path):
-    """從 MAT 檔讀取正規化後的 CSI 資料 HT。"""
+    """從 MAT 檔讀取正規化後的 CSI 資料 HT；支援一般 MAT 檔與 MATLAB v7.3 HDF5 MAT 檔。"""
     require_file(path)
-    mat = sio.loadmat(path)
-    if 'HT' not in mat:
-        raise KeyError("%s does not contain variable 'HT'." % path)
-    return mat['HT'].astype('float32')
+    try:
+        mat = sio.loadmat(path)
+        if 'HT' not in mat:
+            raise KeyError("%s does not contain variable 'HT'." % path)
+        return mat['HT'].astype('float32')
+    except NotImplementedError:
+        import h5py
+        with h5py.File(path, 'r') as f:
+            if 'HT' not in f:
+                raise KeyError("%s does not contain variable 'HT'." % path)
+            HT = np.array(f['HT'])
+            # MATLAB v7.3 以 HDF5 儲存時，Python 讀入後常會轉置；這裡自動修正成 [N, 2048]。
+            if HT.ndim == 2 and HT.shape[0] == img_total and HT.shape[1] != img_total:
+                HT = HT.T
+            return HT.astype('float32')
 
 def load_hf_data(path):
-    """若檔案存在，則從 MAT 檔讀取頻域 CSI 資料 HF_all。"""
+    """若檔案存在，則讀取頻域 CSI 資料 HF_all；支援一般 MAT 檔與 MATLAB v7.3 HDF5 MAT 檔。"""
     if path is None or not os.path.exists(path):
         return None
-    mat = sio.loadmat(path)
-    if 'HF_all' not in mat:
-        return None
-    return mat['HF_all']
+    try:
+        mat = sio.loadmat(path)
+        if 'HF_all' not in mat:
+            return None
+        return mat['HF_all']
+    except NotImplementedError:
+        import h5py
+        with h5py.File(path, 'r') as f:
+            if 'HF_all' not in f:
+                return None
+            HF_all = np.array(f['HF_all'])
+            return HF_all
 
 def reshape_to_channels_first(x):
     """將展平的 CSI 樣本轉成原始 CsiNet 使用的 channels_first 格式。"""
@@ -294,7 +313,7 @@ path = 'result/TensorBoard_%s' %file  # TensorBoard log directory
 
 # Train the autoencoder with CSI data (input = target for reconstruction task)
 autoencoder.fit(x_train, x_train,
-                epochs=1000,               # Total training epochs
+                epochs=1500,               # Total training epochs
                 batch_size=200,            # Mini-batch size
                 shuffle=True,              # Shuffle training data per epoch
                 validation_data=(x_val, x_val),  # Validation dataset
@@ -459,5 +478,5 @@ outfile = "result/model_%s.json"%file
 with open(outfile, "w") as json_file:
     json_file.write(model_json)
 # Serialize model weights to HDF5 file
-outfile = "result/model_%s.h5"%file
+outfile = "result/model_%s.weights.h5"%file
 autoencoder.save_weights(outfile)

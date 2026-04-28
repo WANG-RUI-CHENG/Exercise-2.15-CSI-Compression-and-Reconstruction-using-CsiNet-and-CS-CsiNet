@@ -7,16 +7,16 @@ measures per-sample inference time, and visualizes the original vs. reconstructe
 No model training is performed in this script.
 """
 import tensorflow as tf
-from keras.layers import Input, Dense, BatchNormalization, Reshape, Conv2D, add, LeakyReLU
-from keras.models import Model, model_from_json
-from keras.callbacks import TensorBoard, Callback
+from tensorflow.keras.layers import Input, Dense, BatchNormalization, Reshape, Conv2D, add, LeakyReLU
+from tensorflow.keras.models import Model, model_from_json
+from tensorflow.keras.callbacks import TensorBoard, Callback
 import scipy.io as sio 
 import numpy as np
 import math
 import time
 import os
 import csv
-tf.reset_default_graph()
+# tf.reset_default_graph()  # TensorFlow 2 / Colab 不需要使用
 # ────────────────────────  Environment & CSI Configuration  ───────────────────────── #
 envir = 'indoor' #'indoor' or 'outdoor' -> Select the wireless propagation environment
 # ────────────────────────  CSI Image Parameters  ────────────────────────────── #
@@ -78,6 +78,8 @@ autoencoder = model_from_json(loaded_model_json)  # Reconstruct model from JSON
 
 # Load pre-trained model weights from HDF5 file
 outfile = "saved_model/model_%s.h5"%file
+if not os.path.exists(outfile):
+    outfile = "saved_model/model_%s.weights.h5"%file
 autoencoder.load_weights(outfile)  # Load weights into the reconstructed model
 # ────────────────────────  Test Data Loading and Preprocessing  ─────────────── #
 # 以下輔助函式是為 Exercise 2.15 的多資料集評估所新增。
@@ -91,21 +93,40 @@ def require_file(path):
         )
 
 def load_ht_data(path):
-    """從 MAT 檔讀取正規化後的 CSI 資料 HT。"""
+    """從 MAT 檔讀取正規化後的 CSI 資料 HT；支援一般 MAT 檔與 MATLAB v7.3 HDF5 MAT 檔。"""
     require_file(path)
-    mat = sio.loadmat(path)
-    if 'HT' not in mat:
-        raise KeyError("%s does not contain variable 'HT'." % path)
-    return mat['HT'].astype('float32')
+    try:
+        mat = sio.loadmat(path)
+        if 'HT' not in mat:
+            raise KeyError("%s does not contain variable 'HT'." % path)
+        return mat['HT'].astype('float32')
+    except NotImplementedError:
+        import h5py
+        with h5py.File(path, 'r') as f:
+            if 'HT' not in f:
+                raise KeyError("%s does not contain variable 'HT'." % path)
+            HT = np.array(f['HT'])
+            # MATLAB v7.3 以 HDF5 儲存時，Python 讀入後常會轉置；這裡自動修正成 [N, 2048]。
+            if HT.ndim == 2 and HT.shape[0] == img_total and HT.shape[1] != img_total:
+                HT = HT.T
+            return HT.astype('float32')
 
 def load_hf_data(path):
-    """若檔案存在，則從 MAT 檔讀取頻域 CSI 資料 HF_all。"""
+    """若檔案存在，則讀取頻域 CSI 資料 HF_all；支援一般 MAT 檔與 MATLAB v7.3 HDF5 MAT 檔。"""
     if path is None or not os.path.exists(path):
         return None
-    mat = sio.loadmat(path)
-    if 'HF_all' not in mat:
-        return None
-    return mat['HF_all']
+    try:
+        mat = sio.loadmat(path)
+        if 'HF_all' not in mat:
+            return None
+        return mat['HF_all']
+    except NotImplementedError:
+        import h5py
+        with h5py.File(path, 'r') as f:
+            if 'HF_all' not in f:
+                return None
+            HF_all = np.array(f['HF_all'])
+            return HF_all
 
 def reshape_to_channels_first(x):
     """將展平的 CSI 樣本轉成原始 CsiNet 使用的 channels_first 格式。"""
