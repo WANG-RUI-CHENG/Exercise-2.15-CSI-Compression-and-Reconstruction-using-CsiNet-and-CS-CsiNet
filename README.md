@@ -42,7 +42,7 @@ HT shape = [num_samples, 2048]
 train_dataset_mode = 'single_cost2100'
 ```
 
-只使用單一分佈訓練 CsiNet，作為 baseline。
+只使用 `user_center` 單一分佈訓練 CsiNet，作為 single-dataset baseline。此 baseline 不是官方 pretrained model，而是 user_center single-domain baseline。
 
 ### (c) 混合不同 channel datasets 重新訓練 CsiNet 並比較
 
@@ -103,6 +103,8 @@ NMSE(dB) = 10 log10(NMSE)
 - `H_hat`：CsiNet reconstructed CSI
 - NMSE 越低越好
 - dB 數值越負代表重建效果越好
+
+此處 NMSE 是在 CsiNet 輸入使用的 normalized CSI domain 上計算，也就是 MATLAB 產生資料時輸出的 `HT` 正規化表示。
 
 產生的資料只輸出 `HT`，沒有額外輸出 `HF_all`，因此 correlation 欄位顯示為 `NaN`。主要比較指標為 NMSE。
 
@@ -297,6 +299,8 @@ h5py
 !mkdir -p data result saved_model
 ```
 
+`data/` 與 `saved_model/` 是在 Colab / 本機執行時建立的資料夾，用來放資料與模型權重，不放進 GitHub。
+
 ### 7.4 從 Google Drive 複製資料
 
 先將 MATLAB 產生的 `CsiNetData` 壓縮為 `CsiNetData.zip`，上傳到 Google Drive。
@@ -389,7 +393,7 @@ display(compare)
 
 ### 9.1 Single-dataset baseline 結果
 
-此結果使用 `user_center` 作為單一分佈訓練資料，然後測試六組使用者分佈。
+此結果不是官方 pretrained model，而是使用 `user_center` 作為單一分佈訓練資料，然後測試六組使用者分佈。
 
 | Dataset | Single NMSE (dB) | Test Samples |
 |---|---:|---:|
@@ -432,7 +436,7 @@ display(compare)
 | `user_right_cluster` | 2.097350 | -1.248775 | -3.346125 |
 | `user_ring` | 2.106925 | -1.245125 | -3.352050 |
 
-結果顯示 mixed training 在六組測試分佈上都比 single-dataset baseline 更低，約改善 `3.35 dB`。這代表多分佈訓練有助於提升 CsiNet 對不同通道分佈的泛化能力。
+結果顯示 mixed training 在六組測試分佈上都比 single-dataset baseline 更低，平均約改善 `3.35 dB`。這代表多分佈訓練有助於提升 CsiNet 對不同通道分佈的泛化能力。
 
 ---
 
