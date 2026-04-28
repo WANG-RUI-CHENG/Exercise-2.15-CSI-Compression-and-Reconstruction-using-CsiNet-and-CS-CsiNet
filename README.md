@@ -1,37 +1,211 @@
 # Exercise 2.15 — CsiNet 在多組 COST2100 通道資料集上的泛化能力測試
 
-本專案完成 *Wireless Communications and Machine Learning* Exercise 2.15。目標是使用 COST2100 channel model 產生多組不同使用者分佈的 CSI 資料集，測試 CsiNet 在不同通道分佈下的 CSI reconstruction NMSE，並使用混合資料集重新訓練 CsiNet，觀察模型泛化能力。
+本專案完成 *Wireless Communications and Machine Learning* Exercise 2.15。作業目標是使用 **COST2100 channel model** 產生多組不同通道資料集，評估 CsiNet 在不同通道分佈下的 CSI reconstruction NMSE，並使用混合資料集重新訓練 CsiNet，觀察模型在複雜通道環境中的泛化能力。
 
-## 1. 作業目標
+本次實驗使用六種使用者分佈：
 
-Exercise 2.15 分成三個部分：
+```text
+user_center
+user_edge
+user_uniform
+user_left_cluster
+user_right_cluster
+user_ring
+```
 
-1. 使用 COST2100 channel model 產生超過五組不同 channel datasets。
-2. 使用已訓練 CsiNet 模型，在每一組資料集上計算 CSI reconstruction NMSE。
-3. 將多組 channel datasets 混合後重新訓練 CsiNet，並比較 NMSE，討論對實際複雜通道環境的泛化能力。
+---
 
-本專案使用六種使用者分佈：`user_center`、`user_edge`、`user_uniform`、`user_left_cluster`、`user_right_cluster`、`user_ring`。
+## 1. 題目要求與完成內容
 
-## 2. 專案檔案結構
+Exercise 2.15 包含三個小題：
 
-建議 GitHub repository 結構如下：
+### (a) 使用 COST2100 產生超過五組不同 channel datasets
+
+本專案使用 MATLAB 版 COST2100 channel model 產生六組不同使用者分佈的 CSI 資料。每組資料都切成 train、validation、test 三個 split。
+
+每一筆 CSI 會被整理成 CsiNet 所需格式：
+
+```text
+HT shape = [num_samples, 2048]
+2048 = 2 × 32 × 32
+```
+
+其中 `2` 代表 real / imaginary 兩個 channel。
+
+### (b) 評估 trained CsiNet 在每一組 dataset 上的 NMSE
+
+本專案提供 `CsiNet_onlytest.py`，可讀取已訓練的 CsiNet model，並逐一測試六組 COST2100 test dataset。
+
+若沒有原始 pretrained model，也可以使用 `CsiNet_train.py` 中的：
+
+```python
+train_dataset_mode = 'single_cost2100'
+```
+
+只使用單一分佈訓練 CsiNet，作為 baseline。
+
+### (c) 混合不同 channel datasets 重新訓練 CsiNet 並比較
+
+本專案使用：
+
+```python
+train_dataset_mode = 'mixed_cost2100'
+```
+
+將六組 COST2100 training datasets 合併後訓練 CsiNet，再分別測試六組 test datasets，並與 single-dataset baseline 比較 NMSE。
+
+---
+
+## 2. 原理說明
+
+### 2.1 CsiNet 架構
+
+CsiNet 是一個用於 CSI compression and reconstruction 的 autoencoder。其主要流程如下：
+
+```text
+Original CSI → Encoder → Compressed codeword → Decoder → Reconstructed CSI
+```
+
+在本實驗中，輸入 CSI 被表示為：
+
+```text
+[batch, 2, 32, 32]
+```
+
+其中：
+
+- channel 0：real part
+- channel 1：imaginary part
+- `32 × 32`：CSI 空間 / 頻率維度
+
+Encoder 使用 convolution、reshape 與 dense layer 將 CSI 壓縮成低維向量。Decoder 使用 dense layer、reshape 與 residual blocks 重建原始 CSI。
+
+本實驗設定：
+
+```text
+encoded_dim = 512
+compression rate = 1/4
+residual_num = 2
+```
+
+### 2.2 NMSE 評估指標
+
+本題主要評估 CSI reconstruction NMSE：
+
+```text
+NMSE = E[ ||H - H_hat||² / ||H||² ]
+NMSE(dB) = 10 log10(NMSE)
+```
+
+其中：
+
+- `H`：原始 CSI
+- `H_hat`：CsiNet reconstructed CSI
+- NMSE 越低越好
+- dB 數值越負代表重建效果越好
+
+本次資料只輸出 `HT`，沒有額外輸出 `HF_all`，因此 correlation 欄位顯示為 `NaN`。本題主要比較指標為 NMSE。
+
+### 2.3 為什麼要做 mixed training？
+
+單一分佈訓練的 CsiNet 容易只學到某一種通道型態。實際無線系統中，使用者位置、移動方向、散射環境與場景都會改變，因此模型需要具備較好的泛化能力。
+
+混合多種 COST2100 channel datasets 訓練，可以讓 CsiNet 在訓練階段看到更多通道變化，因此有機會在不同使用者分佈下得到更穩定的 NMSE。
+
+---
+
+## 3. 專案檔案結構
 
 ```text
 .
 ├── README.md
+├── requirements.txt
+├── .gitignore
 ├── CsiNet_train.py
 ├── CsiNet_onlytest.py
 ├── CS-CsiNet_train.py
 ├── CS-CsiNet_onlytest.py
 ├── matlab/
 │   └── generate_cost2100_csinet_data.m
-└── result/
-    └── final_mixed_1500epochs.csv
+├── result/
+│   ├── final_single_1500epochs.csv
+│   ├── final_mixed_1500epochs.csv
+│   └── final_compare_1500epochs.csv
+├── data/
+│   └── .gitkeep
+└── saved_model/
+    └── .gitkeep
 ```
 
-不建議上傳大型檔案：`data/*.mat`、`CsiNetData.zip`、`saved_model/*.h5`、`saved_model/*.weights.h5`、`result/model_*.weights.h5`。
+### 不建議上傳到 GitHub 的大型檔案
 
-## 3. MATLAB / COST2100 資料產生
+```text
+data/*.mat
+CsiNetData.zip
+saved_model/*.h5
+saved_model/*.weights.h5
+saved_model/*.json
+result/model_*.weights.h5
+result/TensorBoard_*/
+```
+
+大型 `.mat` dataset 與 model weights 請自行產生或放在 Google Drive，不建議直接放進 GitHub。
+
+---
+
+## 4. 環境建立
+
+### 4.1 Python / Colab 套件
+
+本實驗主要在 Google Colab 執行。
+
+```bash
+pip install -r requirements.txt
+```
+
+`requirements.txt` 內容：
+
+```text
+tensorflow
+numpy
+scipy
+matplotlib
+pandas
+h5py
+```
+
+### 4.2 Colab GPU 設定
+
+在 Colab 上方選單設定：
+
+```text
+Runtime → Change runtime type → Hardware accelerator → T4 GPU → Save
+```
+
+確認 GPU：
+
+```python
+!nvidia-smi
+```
+
+本次實驗使用：
+
+```text
+GPU: NVIDIA Tesla T4
+```
+
+執行時間約為：
+
+```text
+Part (b) single / baseline evaluation: 約 10 分鐘
+Part (c) mixed training, 1500 epochs: 約 40 分鐘
+```
+
+實際時間會依 Colab 當下 GPU 狀態、batch size 與資料大小而不同。
+
+---
+
+## 5. MATLAB / COST2100 資料產生
 
 下載 COST2100 MATLAB code：
 
@@ -50,14 +224,27 @@ C:\Users\user\Desktop\AIwireless\cost2100-master
 ```matlab
 cd('C:\Users\user\Desktop\AIwireless')
 addpath(genpath('cost2100-master'))
-generate_cost2100_csinet_data
 ```
 
-若 `savepath` 出現權限 warning，可以忽略。
+接著執行本專案提供的 script：
 
-產生的資料會存到 `CsiNetData/`。每個 `.mat` 檔案內含 `HT`，shape 為 `[num_samples, 2048]`，因為 CsiNet 使用 `2 × 32 × 32 = 2048`。
+```matlab
+matlab/generate_cost2100_csinet_data.m
+```
 
-需要產生的 18 個檔案：
+若 MATLAB 的 `savepath` 出現權限 warning，可以忽略，只要目前 session 已經 `addpath` 成功即可。
+
+產生的資料會存到：
+
+```text
+CsiNetData/
+```
+
+---
+
+## 6. 需要的資料檔案
+
+程式會讀取以下 18 個 `.mat` 檔案：
 
 ```text
 DATA_Htrainin_user_center.mat
@@ -80,21 +267,33 @@ DATA_Hvalin_user_ring.mat
 DATA_Htestin_user_ring.mat
 ```
 
-## 4. Google Colab 執行環境
-
-開啟 GPU：
+每個 `.mat` 內含變數：
 
 ```text
-Runtime → Change runtime type → T4 GPU → Save
+HT
 ```
 
-確認 GPU：
+`HT` shape：
 
-```python
-!nvidia-smi
+```text
+train: [3000, 2048]
+val:   [600, 2048]
+test:  [600, 2048]
 ```
 
-複製 GitHub 專案：
+六組合併後：
+
+```text
+training samples = 18,000
+validation samples = 3,600
+test samples per dataset = 600
+```
+
+---
+
+## 7. Google Colab 執行流程
+
+### 7.1 Clone GitHub repository
 
 ```python
 !git clone https://github.com/WANG-RUI-CHENG/Exercise-2.15-CSI-Compression-and-Reconstruction-using-CsiNet-and-CS-CsiNet.git
@@ -102,21 +301,21 @@ Runtime → Change runtime type → T4 GPU → Save
 !ls
 ```
 
-安裝套件：
+### 7.2 安裝套件
 
 ```python
-!pip install scipy matplotlib pandas h5py
+!pip install -r requirements.txt
 ```
 
-建立資料夾：
+### 7.3 建立資料夾
 
 ```python
 !mkdir -p data result saved_model
 ```
 
-## 5. 將資料放入 Colab
+### 7.4 從 Google Drive 複製資料
 
-先將 MATLAB 產生的 `CsiNetData` 壓縮成 `CsiNetData.zip`，上傳到 Google Drive。
+先將 MATLAB 產生的 `CsiNetData` 壓縮為 `CsiNetData.zip`，上傳到 Google Drive。
 
 ```python
 from google.colab import drive
@@ -128,15 +327,39 @@ drive.mount('/content/drive')
 !ls data | wc -l
 ```
 
-正常應顯示 `18`。
+正常應顯示：
 
-## 6. 執行 CsiNet mixed training
+```text
+18
+```
+
+---
+
+## 8. 執行程式
+
+### 8.1 Part (b)：single-dataset baseline
+
+若要做 baseline，可在 `CsiNet_train.py` 中設定：
+
+```python
+train_dataset_mode = 'single_cost2100'
+```
+
+然後執行：
 
 ```python
 !python CsiNet_train.py
 ```
 
-`CsiNet_train.py` 預設：
+完成後將結果另存成：
+
+```text
+result/final_single_1500epochs.csv
+```
+
+### 8.2 Part (c)：mixed-dataset training
+
+正式 mixed training 設定：
 
 ```python
 use_cost2100_multi_dataset = True
@@ -146,11 +369,54 @@ epochs = 1500
 encoded_dim = 512
 ```
 
-## 7. 實驗結果
+執行：
 
-本實驗設定：CsiNet、COST2100 indoor、encoded dimension = 512、mixed six datasets、epochs = 1500、training samples = 18,000、validation samples = 3,600、test samples per dataset = 600。
+```python
+!python CsiNet_train.py
+```
 
-| Dataset | NMSE (dB) | Test Samples |
+完成後將結果另存成：
+
+```text
+result/final_mixed_1500epochs.csv
+```
+
+### 8.3 讀取結果表格
+
+```python
+import pandas as pd
+
+single = pd.read_csv('result/final_single_1500epochs.csv')
+mixed = pd.read_csv('result/final_mixed_1500epochs.csv')
+compare = pd.read_csv('result/final_compare_1500epochs.csv')
+
+display(single)
+display(mixed)
+display(compare)
+```
+
+---
+
+## 9. 模擬結果
+
+### 9.1 Single-dataset baseline 結果
+
+此結果使用 `user_center` 作為單一分佈訓練資料，然後測試六組使用者分佈。
+
+| Dataset | Single NMSE (dB) | Test Samples |
+|---|---:|---:|
+| `user_center` | 2.124157 | 600 |
+| `user_edge` | 2.115973 | 600 |
+| `user_uniform` | 2.120627 | 600 |
+| `user_left_cluster` | 2.102291 | 600 |
+| `user_right_cluster` | 2.097350 | 600 |
+| `user_ring` | 2.106925 | 600 |
+
+### 9.2 Mixed-dataset training 結果
+
+此結果使用六組 COST2100 datasets 混合訓練，然後測試六組使用者分佈。
+
+| Dataset | Mixed NMSE (dB) | Test Samples |
 |---|---:|---:|
 | `user_center` | -1.228356 | 600 |
 | `user_edge` | -1.248122 | 600 |
@@ -159,10 +425,47 @@ encoded_dim = 512
 | `user_right_cluster` | -1.248775 | 600 |
 | `user_ring` | -1.245125 | 600 |
 
-平均 NMSE 約為 `-1.2415 dB`。`correlation` 為 `NaN` 是因為本次資料只輸出 CsiNet reconstruction 所需的 `HT`，沒有額外輸出 `HF_all`。本題主要評估指標為 CSI reconstruction NMSE。
+平均 mixed NMSE：
 
-## 8. 結論
+```text
+約 -1.2415 dB
+```
 
-六組不同使用者分佈的 COST2100 channel datasets 混合訓練後，CsiNet 在不同測試分佈上得到接近的 NMSE。這代表混合資料訓練能讓模型學到較多樣的通道特徵，降低對單一使用者分佈過度擬合的風險。
+### 9.3 Single vs Mixed 比較
 
-實際系統中，通道會隨使用者位置、移動方向、散射環境與場景改變。因此可以透過多場景資料混合訓練、資料增強、domain randomization，以及少量新環境資料 fine-tuning 來改善 CSI feedback 方法的泛化能力。
+`mixed_minus_single_db < 0` 代表 mixed training 的 NMSE 更低，效果較好。
+
+| Dataset | Single NMSE (dB) | Mixed NMSE (dB) | Mixed - Single (dB) |
+|---|---:|---:|---:|
+| `user_center` | 2.124157 | -1.228356 | -3.352513 |
+| `user_edge` | 2.115973 | -1.248122 | -3.364095 |
+| `user_uniform` | 2.120627 | -1.235212 | -3.355839 |
+| `user_left_cluster` | 2.102291 | -1.243599 | -3.345890 |
+| `user_right_cluster` | 2.097350 | -1.248775 | -3.346125 |
+| `user_ring` | 2.106925 | -1.245125 | -3.352050 |
+
+結果顯示 mixed training 在六組測試分佈上都比 single-dataset baseline 更低，約改善 `3.35 dB`。這代表多分佈訓練有助於提升 CsiNet 對不同通道分佈的泛化能力。
+
+---
+
+## 10. 結論與討論
+
+1. 使用 COST2100 產生六組不同使用者分佈的通道資料後，可以觀察 CsiNet 在不同通道分佈下的重建能力。
+2. Single-dataset training 只看到一種通道分佈，因此泛化能力較弱。
+3. Mixed-dataset training 將多組使用者分佈合併訓練，使模型能學到更多樣的通道特徵。
+4. 實驗結果中，mixed training 在所有測試分佈上都得到更低 NMSE，平均約改善 3.35 dB。
+5. 實際系統中，通道環境會隨使用者位置、移動方向、散射環境與室內/室外場景改變，因此 CSI feedback 方法應使用多場景資料訓練，並可搭配資料增強、domain randomization 或少量新環境資料 fine-tuning 改善泛化能力。
+
+---
+
+## 11. 備註
+
+本實驗主要比較 NMSE，因此 MATLAB script 只輸出 `HT`。若要計算 correlation coefficient，需要額外輸出頻域 CSI `HF_all`，並放入：
+
+```text
+DATA_HtestFin_user_center_all.mat
+DATA_HtestFin_user_edge_all.mat
+...
+```
+
+若未提供 `HF_all`，程式仍可正常計算 NMSE，correlation 欄位會顯示為 `NaN`。
